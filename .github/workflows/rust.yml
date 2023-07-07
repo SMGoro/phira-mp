@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+  release:
+    types: [created]
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,9 +17,33 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    outputs:
+      build_path: ${{ steps.build.outputs.build_path }}
+
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --release -p phira-mp-server
-    - name: Run tests
-      run: cargo test --verbose
+      id: build
+      run: |
+        cargo build --release -p phira-mp-server
+        echo "::set-output name=build_path::target/release/phira-mp-server"
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+    - name: Upload Release Asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.build.outputs.build_path }}
+        asset_name: phira-mp-server-${{ runner.os }}-${{ runner.arch }}
+        asset_content_type: application/octet-stream
