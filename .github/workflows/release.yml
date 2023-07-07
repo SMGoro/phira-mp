@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build project
-        uses: rust-build/rust-build.action@v1
+        uses: rust-build/rust-build.action@v1.4.3
         with:
           project-name: phira-mp-server
           version: ${{ github.event.release.tag_name }}
