@@ -12,8 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Build project
-        uses: rust-build/rust-build.action@v1.4.3
+      - name: Rust Release
+        uses: manoadamro/rust-release@v1  
         with:
           project-name: phira-mp-server
           version: ${{ github.event.release.tag_name }}

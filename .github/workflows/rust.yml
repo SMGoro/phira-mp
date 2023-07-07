@@ -31,24 +31,12 @@ jobs:
       run: |
         cargo build --release -p phira-mp-server
         echo "::set-output name=build_path::target/release/phira-mp-server"
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Deploy Github
+      uses: peaceiris/actions-gh-pages@v3
       with:
-        tag_name: latest-${{ matrix.os }}
-        # automatic_release_tag: ${{ env.ReleaseVersion }}
-        release_name: Release ${{ github.ref_name }}
-        draft: false
-        prerelease: false
-    - name: Upload Release Asset
-      id: upload-release-asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ${{ steps.build.outputs.build_path }}
-        asset_name: phira-mp-server-${{ matrix.os }}-${{ runner.arch }}
-        asset_content_type: application/octet-stream
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        force_orphan: true
+        branch: releases
