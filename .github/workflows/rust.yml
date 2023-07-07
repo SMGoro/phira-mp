@@ -3,6 +3,8 @@ name: Rust
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - v*
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -12,49 +14,66 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        arch: [x86_64, aarch64]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-      - name: Install MSVC toolchain for Windows
-        if: matrix.os == 'windows-latest'
-        run: rustup target add x86_64-pc-windows-msvc
-      - name: Build and Test
-        run: |
-          cargo build --release -p phira-mp-server
+    - uses: actions/checkout@v3
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Build
+      run: cargo build --release -p phira-mp-server
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: phira-mp-server-${{ matrix.os }}
+        path: target/release/phira-mp-server
 
-      # more packaging stuff goes here ...
+  release:
 
-      - name: Create Release and upload binary to it 
-        id: create_release_and_upload_binary 
-        uses: actions/create-release@v1 
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v0.0.1 
-          release_name: Release v0.0.1 
-          body: |
-            This is a new release.
-          draft: false 
-          prerelease: false 
+    needs: build
 
-      - name: Upload Release Asset 
-        id: upload-release-asset 
-        uses: actions/upload-release-asset@v1.0.2 
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release_and_upload_binary.outputs.upload_url }} 
-          asset_path: ./dist/${{ matrix.platform.name }} 
-          asset_name: ${{ matrix.platform.name }} 
-          asset_content_type: application/octet-stream
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        path: artifacts
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+    - name: Upload release assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: artifacts/phira-mp-server-ubuntu-latest
+        asset_name: phira-mp-server-ubuntu-latest
+        asset_content_type: application/octet-stream
+    - name: Upload release assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: artifacts/phira-mp-server-windows-latest.exe
+        asset_name: phira-mp-server-windows-latest.exe
+        asset_content_type: application/octet-stream
+
