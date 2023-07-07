@@ -1,78 +1,49 @@
 name: Rust
+
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [main]
   workflow_dispatch:
-env:
-  CARGO_TERM_COLOR: always
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  release:
+    name: Release - ${{ matrix.platform.release_for }}
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-gnu, x86_64-apple-darwin]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: sudo apt-get install gcc-mingw-w64-x86-64 gcc-aarch64-linux-gnu
-      - name: Build
-        run: cargo build --release -p phira-mp-server --target ${{ matrix.target }}
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: phira-mp-server-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/phira-mp-server
-  create-release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v2
-        with:
-          path: artifacts
-      - name: Create release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v1.0.0
-          release_name: phira-mp-server v1.0.0
-          body: This is the first release of phira-mp-server.
-          draft: false
-          prerelease: false
-          commitish: main
-      - name: Upload release asset for Linux
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./artifacts/phira-mp-server-x86_64-unknown-linux-gnu/phira-mp-server
-          asset_name: phira-mp-server-Linux-X64
-          asset_content_type: application/octet-stream
-      - name: Upload release asset for Windows
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./artifacts/phira-mp-server-x86_64-pc-windows-gnu/phira-mp-server.exe
-          asset_name: phira-mp-server-Windows-X64.exe
-          asset_content_type: application/octet-stream
-      - name: Upload release asset for MacOS
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./artifacts/phira-mp-server-x86_64-apple-darwin/phira-mp-server
-          asset_name: phira-mp-server-MacOS-X64
-          asset_content_type: application/octet-stream
+        platform:
+          - release_for: FreeBSD-x86_64
+            os: ubuntu-20.04
+            target: x86_64-unknown-freebsd
+            bin: precious
+            name: precious-FreeBSD-x86_64.tar.gz
+            command: cargo build --release -p phira-mp-server
 
-  delete-artifacts:
-    needs: create-release
-    runs-on: ubuntu-latest
+          - release_for: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: precious.exe
+            name: precious-Windows-x86_64.zip
+            command: cargo build --release -p phira-mp-server
+
+          - release_for: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+            bin: precious
+            name: precious-Darwin-x86_64.tar.gz
+            command: cargo build --release -p phira-mp-server
+
+            # more release targets here ...
+
+    runs-on: ${{ matrix.platform.os }}
     steps:
-      - name: Delete artifacts
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: ${{ matrix.platform.command }}
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
+
+    # more packaging stuff goes here ...
