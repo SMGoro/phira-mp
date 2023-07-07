@@ -18,13 +18,13 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --release -p phira-mp-server --out-dir ./bin # 指定输出路径
+      run: cargo build --release -p phira-mp-server # 构建命令
     - name: Upload release asset # 使用upload-release-asset action
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ github.event.release.upload_url }} # 获取upload_url
-        asset_path: ./bin/phira-mp-server.exe # windows平台的asset_path
+        asset_path: target/release/phira-mp-server.exe # windows平台的asset_path
         asset_name: phira-mp-server-${{ matrix.os }}.exe # windows平台的asset_name
         if-no-files-found: error # 如果没有找到文件则报错
