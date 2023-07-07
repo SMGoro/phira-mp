@@ -3,68 +3,28 @@ name: Rust
 on:
   push:
     branches: [ "main" ]
-    tags:
-      - v*
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
-
-env:
-  CARGO_TERM_COLOR: always
+  release: # 添加release触发器
+    types: [created]
 
 jobs:
   build:
-    
+    runs-on: ${{ matrix.os }} # 使用矩阵策略
     strategy:
       matrix:
-        os: [windows-latest]
-
-    runs-on: ${{ matrix.os }}
-
+        os: [windows-latest] # 指定windows和linux环境
     steps:
     - uses: actions/checkout@v3
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
     - name: Build
-      run: cargo build --release -p phira-mp-server
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: phira-mp-server-${{ matrix.os }}
-        path: target/release/phira-mp-server
-
-  release:
-
-    needs: build
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v2
-      with:
-        path: artifacts
-    - name: Create release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v0.0.1-${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-    - name: Upload release assets
+      run: cargo build --release -p phira-mp-server --out-dir ./bin # 指定输出路径
+    - name: Upload release asset # 使用upload-release-asset action
       uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: artifacts/phira-mp-server-windows-latest/phira-mp-server.exe
-        asset_name: phira-mp-server-windows-latest.exe
-        asset_content_type: application/octet-stream
-
+        upload_url: ${{ github.event.release.upload_url }} # 获取upload_url
+        asset_path: ./bin/phira-mp-server.exe # windows平台的asset_path
+        asset_name: phira-mp-server-${{ matrix.os }}.exe # windows平台的asset_name
+        if-no-files-found: error # 如果没有找到文件则报错
