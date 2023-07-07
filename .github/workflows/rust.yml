@@ -2,48 +2,66 @@ name: Rust
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  release:
-    name: Release - ${{ matrix.platform.release_for }}
+  build:
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        platform:
-          - release_for: FreeBSD-x86_64
-            os: ubuntu-20.04
-            target: x86_64-unknown-freebsd
-            bin: precious
-            name: precious-FreeBSD-x86_64.tar.gz
-            command: cargo build --release -p phira-mp-server
+        os: [ubuntu-latest, windows-latest]
+        arch: [x86_64, aarch64]
 
-          - release_for: Windows-x86_64
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            bin: precious.exe
-            name: precious-Windows-x86_64.zip
-            command: cargo build --release -p phira-mp-server
-
-          - release_for: macOS-x86_64
-            os: macOS-latest
-            target: x86_64-apple-darwin
-            bin: precious
-            name: precious-Darwin-x86_64.tar.gz
-            command: cargo build --release -p phira-mp-server
-
-            # more release targets here ...
-
-    runs-on: ${{ matrix.platform.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0
+      - uses: actions/checkout@v2
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
         with:
-          command: ${{ matrix.platform.command }}
-          target: ${{ matrix.platform.target }}
-          args: "--release"
-          strip: true
+          profile: minimal
+          toolchain: stable
+      - name: Install MSVC toolchain for Windows
+        if: matrix.os == 'windows-latest'
+        run: rustup target add x86_64-pc-windows-msvc
+      - name: Build and Test
+        run: |
+          cargo build --release -p phira-mp-server --target ${{ matrix.os }}-unknown-${{ matrix.arch }}
 
-    # more packaging stuff goes here ...
+      # more packaging stuff goes here ...
+
+      - name: Zip binary or tar binary depending on the platform 
+        run: |
+          mkdir -p dist/${{ matrix.platform.name }}
+          cp target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} dist/${{ matrix.platform.name }}/
+          cd dist/${{ matrix.platform.name }}
+          if [[ "${{ matrix.platform.name }}" == *"zip" ]]; then zip ../${{ matrix.platform.name }} ./*; else tar czvf ../${{ matrix.platform.name }} ./*; fi
+
+      - name: Create Release and upload binary to it 
+        id: create_release_and_upload_binary 
+        uses: actions/create-release@v1 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v0.0.1 
+          release_name: Release v0.0.1 
+          body: |
+            This is a new release.
+          draft: false 
+          prerelease: false 
+
+      - name: Upload Release Asset 
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1.0.2 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release_and_upload_binary.outputs.upload_url }} 
+          asset_path: ./dist/${{ matrix.platform.name }} 
+          asset_name: ${{ matrix.platform.name }} 
+          asset_content_type: application/octet-stream
