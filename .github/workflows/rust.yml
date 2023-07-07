@@ -35,13 +35,6 @@ jobs:
 
       # more packaging stuff goes here ...
 
-      - name: Zip binary or tar binary depending on the platform 
-        run: |
-          mkdir -p dist/${{ matrix.platform.name }}
-          cp target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} dist/${{ matrix.platform.name }}/
-          cd dist/${{ matrix.platform.name }}
-          if [[ "${{ matrix.platform.name }}" == *"zip" ]]; then zip ../${{ matrix.platform.name }} ./*; else tar czvf ../${{ matrix.platform.name }} ./*; fi
-
       - name: Create Release and upload binary to it 
         id: create_release_and_upload_binary 
         uses: actions/create-release@v1 
