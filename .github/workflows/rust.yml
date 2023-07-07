@@ -38,7 +38,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # tag_name: ${{ github.ref_name }}
-        automatic_release_tag: ${{ env.ReleaseVersion }}
+        # automatic_release_tag: ${{ env.ReleaseVersion }}
+        tag_name: build
         release_name: Release ${{ github.ref_name }}
         draft: false
         prerelease: false
