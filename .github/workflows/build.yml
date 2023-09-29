@@ -1,0 +1,65 @@
+name: Build and Upload
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Build phira-mp-server-x86-musl
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: phira-mp-server-x86-musl
+          path: target/x86_64-unknown-linux-musl/release/phira-mp-server-x86-musl
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Build phira-mp-server-x86-musl
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Compiled binary for phira-mp-server-x86-musl.
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/x86_64-unknown-linux-musl/release/phira-mp-server-x86-musl
+          asset_name: phira-mp-server-x86-musl-${{ github.ref }}.tar.gz
+          asset_content_type: application/gzip
+
