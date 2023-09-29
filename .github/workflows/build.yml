@@ -1,5 +1,4 @@
 name: Build and Upload
-
 on:
   workflow_dispatch:
   push:
@@ -8,7 +7,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macOS-latest]
 
     steps:
       - name: Checkout repository
@@ -20,12 +23,12 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - name: Build phira-mp-server-x86-musl
+      - name: Build phira-mp-server
         run: cargo build --release -p phira-mp-server
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
-          name: phira-mp-server-x86-musl
+          name: phira-mp-server-${{ matrix.os }}
           path: target/release/phira-mp-server
 
